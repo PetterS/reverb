@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "reverb"
+version = "0.1.0"
+description = ""
+authors = ["Petter Strandmark <petter.strandmark@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+sounddevice = "*"
+matplotlib = "*"
+numpy = "*"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
