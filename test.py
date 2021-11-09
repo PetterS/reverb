@@ -29,4 +29,27 @@ def main():
     plt.ylable("Magnitude")
     plt.show()
 
-main()
+def main2():
+    device = None
+    amplitude = 0.2
+    frequency = 440
+
+    fs = sounddevice.query_devices(device, 'output')['default_samplerate']
+    start_idx = 0
+    def callback(outdata, frames, time, status):
+        if status:
+            print(status, file=sys.stderr)
+        nonlocal start_idx
+        t = (start_idx + np.arange(frames)) / fs
+        t = t.reshape(-1, 1)
+        outdata[:] = amplitude * np.sin(2 * np.pi * frequency * t)
+        start_idx += frames
+
+    with sounddevice.OutputStream(device=device, channels=1, callback=callback,
+                         samplerate=fs):
+        print('#' * 80)
+        print('press Return to quit')
+        print('#' * 80)
+        input()
+
+main2()
