@@ -105,7 +105,12 @@ def analyze(measurement: Measurement, ax=None):
     )[0][0]
     end_decline_t = measurement.time[end_decline_i]
 
-    reverb_time = end_decline_t - start_decline_t
+    dt = measurement.time[start_decline_i : end_decline_i + 1]
+    dm = measurement.magnitude[start_decline_i : end_decline_i + 1]
+    A = np.vstack([dt, np.ones(len(dt))]).T
+    lin_k, lin_m = np.linalg.lstsq(A, dm, rcond=None)[0]
+
+    RT60 = -60.0 / lin_k
 
     if ax:
         p = ax.plot(measurement.time, measurement.magnitude, ".-", label=label)
@@ -128,13 +133,13 @@ def analyze(measurement: Measurement, ax=None):
             color="k",
         )
         yl = ax.get_ylim()
-        ax.plot([start_decline_t, start_decline_t], yl, "-", color="k")
-        ax.plot([end_decline_t, end_decline_t], yl, "-", color="k")
+        tt = np.array([start_decline_t, end_decline_t])
+        ax.plot([tt[0], tt[0]], yl, "-", color="k")
+        ax.plot([tt[1], tt[1]], yl, "-", color="k")
+        ax.plot(tt, lin_k * tt + lin_m, "-", color="r")
 
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Magnitude (dB)")
-        ax.set_title(
-            f"Response for {measurement.frequency:.0f} Hz. t={reverb_time:.2f} s"
-        )
+        ax.set_title(f"Response for {measurement.frequency:.0f} Hz. RT60={RT60:.2f} s")
 
-    return reverb_time
+    return RT60
