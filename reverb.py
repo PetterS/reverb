@@ -59,7 +59,7 @@ def collect_frequency(frequency, *, device=None, amplitude=0.5, window_size=0.05
         sounddevice.sleep(int(interval_time * 1000))
         state = 2
         print("Recording silence...")
-        sounddevice.sleep(int(interval_time * 1000))
+        sounddevice.sleep(int(2 * interval_time * 1000))
 
     for i in range(len(collected_time) - 1, -1, -1):
         collected_time[i] -= collected_time[0]
