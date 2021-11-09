@@ -1,10 +1,22 @@
 import sys
 
+from dataclasses import dataclass, field
+from matplotlib.colors import from_levels_and_colors
 import numpy as np
 import sounddevice
 
 
-def collect_frequency(frequency, *, device=None, amplitude=0.5, window_size=0.05):
+@dataclass
+class Measurement:
+    frequency: float
+    time: list[float] = field(default_factory=lambda: [])
+    magnitude: list[float] = field(default_factory=lambda: [])
+    state: list[int] = field(default_factory=lambda: [])
+
+
+def collect_frequency(
+    frequency, *, device=None, amplitude=0.5, window_size=0.05
+) -> Measurement:
     high = 4000
     low = 50
     fs = 44100
@@ -12,11 +24,10 @@ def collect_frequency(frequency, *, device=None, amplitude=0.5, window_size=0.05
 
     state = 0
     start_idx = 0
-    collected_time = []
-    collected_magnitude = []
+    result = Measurement(frequency=frequency)
 
     def callback(indata, outdata, frames, time, status):
-        nonlocal start_idx, state, collected_time, collected_magnitude
+        nonlocal start_idx, state, result
         if status:
             print(status, file=sys.stderr)
 
@@ -29,9 +40,10 @@ def collect_frequency(frequency, *, device=None, amplitude=0.5, window_size=0.05
         freq = freq[ind]
         fft = fft[ind]
 
-        collected_time.append(time.currentTime)
+        result.time.append(time.currentTime)
         db = 10.0 * np.log10(np.abs(fft))
-        collected_magnitude.append(np.interp(frequency, freq, db))
+        result.magnitude.append(np.interp(frequency, freq, db))
+        result.state.append(state)
 
         outdata[:] = 0
         if state == 0 or state == 2:
@@ -61,7 +73,7 @@ def collect_frequency(frequency, *, device=None, amplitude=0.5, window_size=0.05
         print("Recording silence...")
         sounddevice.sleep(int(2 * interval_time * 1000))
 
-    for i in range(len(collected_time) - 1, -1, -1):
-        collected_time[i] -= collected_time[0]
+    for i in range(len(result.time) - 1, -1, -1):
+        result.time[i] -= result.time[0]
 
-    return collected_time, collected_magnitude
+    return result
