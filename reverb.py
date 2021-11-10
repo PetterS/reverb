@@ -1,7 +1,12 @@
+import argparse
+import math
+import os
+import pickle
 import sys
 from typing import Union
 
 from dataclasses import dataclass, field
+import matplotlib.pyplot as plt
 import numpy as np
 import sounddevice
 
@@ -64,13 +69,13 @@ def collect_frequency(
         callback=callback,
     ):
         state = 0
-        print("Recording silence...")
+        print("-- Recording silence...")
         sounddevice.sleep(int(interval_time * 1000))
         state = 1
-        print(f"Recording tone of {frequency:.0f} Hz...")
+        print(f"-- Recording tone of {frequency:.0f} Hz...")
         sounddevice.sleep(int(interval_time * 1000))
         state = 2
-        print("Recording silence...")
+        print("-- Recording silence...")
         sounddevice.sleep(int(2 * interval_time * 1000))
 
     for i in range(len(result.time) - 1, -1, -1):
@@ -143,3 +148,55 @@ def analyze(measurement: Measurement, ax=None):
         ax.set_title(f"Response for {measurement.frequency:.0f} Hz. RT60={RT60:.2f} s")
 
     return RT60
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Calculate RT60 reverberation.")
+    parser.add_argument("--room", required=True, help="The name of the room to measure")
+    args = parser.parse_args()
+
+    base = 440
+    freqs = [
+        0.5 * base,
+        1.0 / math.sqrt(2) * base,
+        base,
+        math.sqrt(2) * base,
+        2 * base,
+        3 * base,
+        4 * base,
+    ]
+    results = []
+
+    for f in freqs:
+        filename = f"data/{args.room}/freq-{f:.0f}.pickle"
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        try:
+            result = pickle.load(open(filename, "rb"))
+            print(f"Have result for {f:.0f} Hz")
+        except FileNotFoundError:
+            print(f"Collecting result for {f:.0f} Hz...")
+            result = collect_frequency(f)
+            pickle.dump(result, open(filename, "wb"))
+        results.append(result)
+
+    plt.rcParams.update({"font.size": 7})
+    fig, ax = plt.subplots(2, 4, figsize=(14, 7))
+    ax = ax.reshape(-1)
+
+    data_x = []
+    data_y = []
+    for i, result in enumerate(results):
+        t = analyze(result, ax=ax[i])
+        data_x.append(f"{result.frequency:.0f}")
+        data_y.append(t)
+
+    ax[-1].bar(data_x, data_y)
+    ax[-1].set_xlabel("Frequency (Hz)")
+    ax[-1].set_ylabel("Reverb time")
+
+    fig.tight_layout()
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()
