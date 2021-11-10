@@ -89,33 +89,13 @@ def collect_frequency(
 
 def analyze(measurement: Measurement, ax=None):
     label = f"{measurement.frequency} Hz"
-
     robust_max = np.partition(measurement.magnitude, -2)[-2]
 
     max_ind = np.nonzero(measurement.magnitude >= robust_max - 1.5)[0]
     max_level = np.median(measurement.magnitude[max_ind])
 
-    i = max_ind[0] - 2
+    i = max_ind[0] - 4
     min_level = np.max(measurement.magnitude[range(0, i)])
-
-    start_decline_i = max_ind[-1]
-    start_decline_t = measurement.time[start_decline_i]
-
-    last_big_i = np.nonzero(measurement.magnitude > min_level + 5.0)[0][-1]
-    last_big_t = measurement.time[last_big_i]
-    end_decline_i = np.nonzero(
-        np.logical_and(
-            measurement.time > last_big_t, measurement.magnitude < min_level + 1.0
-        )
-    )[0][0]
-    end_decline_t = measurement.time[end_decline_i]
-
-    dt = measurement.time[start_decline_i : end_decline_i + 1]
-    dm = measurement.magnitude[start_decline_i : end_decline_i + 1]
-    A = np.vstack([dt, np.ones(len(dt))]).T
-    lin_k, lin_m = np.linalg.lstsq(A, dm, rcond=None)[0]
-
-    RT60 = -60.0 / lin_k
 
     if ax:
         p = ax.plot(measurement.time, measurement.magnitude, ".-", label=label)
@@ -137,6 +117,27 @@ def analyze(measurement: Measurement, ax=None):
             ":",
             color="k",
         )
+
+    start_decline_i = max_ind[-1]
+    start_decline_t = measurement.time[start_decline_i]
+
+    last_big_i = np.nonzero(measurement.magnitude > min_level + 5.0)[0][-1]
+    last_big_t = measurement.time[last_big_i]
+    end_decline_i = np.nonzero(
+        np.logical_and(
+            measurement.time > last_big_t, measurement.magnitude < min_level + 1.0
+        )
+    )[0][0]
+    end_decline_t = measurement.time[end_decline_i]
+
+    dt = measurement.time[start_decline_i : end_decline_i + 1]
+    dm = measurement.magnitude[start_decline_i : end_decline_i + 1]
+    A = np.vstack([dt, np.ones(len(dt))]).T
+    lin_k, lin_m = np.linalg.lstsq(A, dm, rcond=None)[0]
+
+    RT60 = -60.0 / lin_k
+
+    if ax:
         yl = ax.get_ylim()
         tt = np.array([start_decline_t, end_decline_t])
         ax.plot([tt[0], tt[0]], yl, "-", color="k")
@@ -186,9 +187,12 @@ def main():
     data_x = []
     data_y = []
     for i, result in enumerate(results):
-        t = analyze(result, ax=ax[i])
-        data_x.append(f"{result.frequency:.0f}")
-        data_y.append(t)
+        try:
+            t = analyze(result, ax=ax[i])
+            data_x.append(f"{result.frequency:.0f}")
+            data_y.append(t)
+        except Exception as e:
+            print(e)
 
     ax[-1].bar(data_x, data_y)
     ax[-1].set_xlabel("Frequency (Hz)")
