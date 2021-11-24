@@ -132,8 +132,13 @@ def analyze(measurement: Measurement, ax=None):
 
     dt = measurement.time[start_decline_i : end_decline_i + 1]
     dm = measurement.magnitude[start_decline_i : end_decline_i + 1]
-    A = np.vstack([dt, np.ones(len(dt))]).T
-    lin_k, lin_m = np.linalg.lstsq(A, dm, rcond=None)[0]
+    if True:
+        A = np.ones((len(dt), 1))
+        lin_k = (dm[-1] - dm[0]) / (dt[-1] - dt[0])
+        lin_m = dm[0] - lin_k * dt[0]
+    else:
+        A = np.vstack([dt, np.ones(len(dt))]).T
+        lin_k, lin_m = np.linalg.lstsq(A, dm, rcond=None)[0]
 
     RT60 = -60.0 / lin_k
 
